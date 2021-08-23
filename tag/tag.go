@@ -168,7 +168,6 @@ func (t *Tag) All(timeout ...time.Duration) []int64 {
 			<-flag
 			// time out
 			if zwg.WaitTimeout(wg, timeout) {
-				fmt.Println(timeout)
 				fail <- true
 			} else {
 				fail <- false
@@ -177,15 +176,8 @@ func (t *Tag) All(timeout ...time.Duration) []int64 {
 		}(timeout[0])
 		go func(gl, gr *zgo.GoLimit) {
 			if <-fail {
-				fmt.Println("fail go ...")
 				gr.Cancel()
 				gl.Cancel()
-				// once.Do(func() {
-
-				// 	close(gr.C)
-
-				// 	close(gl.C)
-				// })
 				fail <- true
 			} else {
 				fail <- false
