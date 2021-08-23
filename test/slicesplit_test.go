@@ -15,5 +15,5 @@ func TestSliceSplit(t *testing.T) {
 	f := func(l []interface{}, low, hight int) {
 		fmt.Println(l[low:hight])
 	}
-	zslice.SliceSplit(list, f)
+	zslice.SliceSplit(1000, list, f)
 }

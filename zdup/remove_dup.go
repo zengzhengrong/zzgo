@@ -38,3 +38,32 @@ func RemoveDuplicateInt64(elms []int64) []int64 {
 	}
 	return res
 }
+
+// HasDuplicateInt64 is int64去重
+func HasDuplicateInt64(elms []int64) bool {
+	temp := map[int64]struct{}{}
+	for _, item := range elms {
+		if _, ok := temp[item]; !ok {
+			temp[item] = struct{}{}
+		} else {
+			return true
+		}
+
+	}
+	return false
+}
+
+// DuplicateInt64 is 含有重复元素
+func DuplicateInt64(elms []int64) []int64 {
+	result := make([]int64, 0)
+	temp := map[int64]struct{}{}
+	for _, item := range elms {
+		if _, ok := temp[item]; !ok {
+			temp[item] = struct{}{}
+		} else {
+			result = append(result, item)
+		}
+
+	}
+	return result
+}

@@ -4,9 +4,9 @@ import (
 	"math"
 )
 
-//SliceSplit is 切片分割
-func SliceSplit(list []interface{}, exec func(l []interface{}, low, hight int)) {
-	num := 1000
+//SliceSplit is 切片分割, 按num 个数进行分割
+func SliceSplit(num int, list []interface{}, exec func(l []interface{}, low, hight int)) {
+
 	for i := 1; i <= int(math.Floor(float64(len(list)/num)))+1; i++ {
 		// 将list 除于 num 获取 分割次数 非整数时 舍去小数点 后+1
 		low := num * (i - 1) // 左索引
