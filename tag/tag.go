@@ -3,6 +3,7 @@ package tag
 import (
 	"context"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"sync"
@@ -21,7 +22,9 @@ const (
 	// 或运算 0011 0000 and 0101 0010 = 0111 0010
 	or int = 2
 	// 异或运算 0011 0000 and 0101 0010 = 0110 1101
-	xor int = 3
+	xor  int  = 3
+	zero byte = byte('0')
+	one  byte = byte('1')
 )
 
 var (
@@ -128,6 +131,36 @@ func (t *Tag) Count(opt *redis.BitCount) int64 {
 	return result.Val()
 }
 
+// GetRange 返回开始字节位到结束字节位的二进制字符串
+func (t *Tag) GetRange(start, end int64) string {
+	key := t.GetFullName()
+	result := RDB.GetRange(t.ctx, key, start, end)
+	b, err := result.Bytes()
+	if err != nil {
+		return ""
+	}
+	binbytes := BytesToBinary(b, false)
+	return string(binbytes)
+}
+
+// SetRange is  在offset 字节位设置二进制字符串 返回该key的字节长度
+func (t *Tag) SetRange(offset int64, binary string) int64 {
+	key := t.GetFullName()
+	r := Str2DEC(binary)
+	s := string(rune(r))
+	result := RDB.SetRange(t.ctx, key, offset, s)
+	return result.Val()
+}
+
+// Str2DEC is 二进制字符串转十进制 int
+func Str2DEC(s string) (num int) {
+	l := len(s)
+	for i := l - 1; i >= 0; i-- {
+		num += (int(s[l-i-1]) - 48) << uint8(i)
+	}
+	return
+}
+
 // Pos is 查找字符串中第一个设置为1或0的bit位, pos 可填入开始的位数和结束位数
 func (t *Tag) Pos(bit int64, pos ...int64) int64 {
 	key := t.GetFullName()
@@ -148,6 +181,96 @@ func (t *Tag) Len() int64 {
 	key := t.GetFullName()
 	reuslt := RDB.StrLen(t.ctx, key)
 	return reuslt.Val()
+}
+
+func BytesToBinary(bs []byte, addSpace bool) []byte {
+	l := len(bs)
+	bl := l*8 + l + 1
+	buf := make([]byte, 0, bl)
+	for _, b := range bs {
+		buf = appendBinaryString(buf, b)
+		if addSpace {
+			buf = append(buf, byte(' '))
+		}
+	}
+	return buf
+}
+
+// append bytes of string in binary format.
+func appendBinaryString(bs []byte, b byte) []byte {
+	var a byte
+	for i := 0; i < 8; i++ {
+		a = b
+		b <<= 1
+		b >>= 1
+		switch a {
+		case b:
+			bs = append(bs, zero)
+		default:
+			bs = append(bs, one)
+		}
+		b <<= 1
+	}
+	return bs
+}
+
+// FastAll is 直接获取整个字符串，在程序里面做offset和值的处理,只需要请求一次redis
+func (t *Tag) FastAll() ([]int64, error) {
+	key := t.GetFullName()
+	size := t.Count(nil)
+	result := make([]int64, size)
+	r := RDB.Get(t.ctx, key)
+	if r.Err() != nil {
+		return []int64{}, r.Err()
+	}
+	b, err := r.Bytes()
+	if err != nil {
+		return []int64{}, err
+	}
+	binbytes := BytesToBinary(b, false)
+	wg := &sync.WaitGroup{}
+	num := 64
+	if size < 64 {
+		num = int(size)
+	}
+	bytesSplit(num, binbytes, func(l []byte, lower, hight int) {
+		wg.Add(1)
+		go func(l []byte, lower, hight int) {
+			defer wg.Done()
+			for ; lower < hight; lower++ {
+				switch l[lower] {
+				case one:
+					size := atomic.AddInt64(&size, int64(-1))
+					result[size] = int64(lower)
+				default:
+					continue
+				}
+			}
+		}(l, lower, hight)
+	})
+	wg.Wait()
+	sort.Slice(result, func(i, j int) bool { return result[i] < result[j] })
+	return result, nil
+}
+
+//bytesSplit is 切片分割, 按num 个数进行分割
+func bytesSplit(num int, list []byte, exec func(l []byte, low, hight int)) {
+
+	for i := 1; i <= int(math.Floor(float64(len(list)/num)))+1; i++ {
+		// 将list 除于 num 获取 分割次数 非整数时 舍去小数点 后+1
+		low := num * (i - 1) // 左索引
+
+		if low > len(list) {
+			// 左索引 大于长度列表长度则直接返回
+			return
+		}
+		high := num * i // 右索引
+		if high > len(list) {
+			// 如果右索引大于 list长度，则取list的长度
+			high = len(list)
+		}
+		exec(list, low, high)
+	}
 }
 
 // All 获取所有bit为1 的offsets
