@@ -6,7 +6,7 @@ import (
 )
 
 // 任意slice合并
-func SliceJoin(sep string, elems ...interface{}) string {
+func SliceJoin(sep string, elems ...any) string {
 	l := len(elems)
 	if l == 0 {
 		return ""

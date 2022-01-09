@@ -8,11 +8,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"sort"
 	"strings"
 	"time"
 
-	"github.com/spf13/cast"
+	"github.com/zengzhengrong/zzgo/request"
 	"github.com/zengzhengrong/zzgo/zstr"
 )
 
@@ -80,14 +79,14 @@ func curl(method, router string, body interface{}, header map[string]string) ([]
 	if Debug {
 		blob := zstr.SerializeStr(body)
 		if contentType != "application/json" {
-			blob = HttpBuild(body)
+			blob = request.HttpBuild(body)
 		}
 		fmt.Printf("\n\n=====================\n[url]: %s\n[time]: %s\n[method]: %s\n[content-type]: %v\n[req_header]: %s\n[req_body]: %#v\n[resp_err]: %v\n[resp_header]: %v\n[resp_body]: %v\n=====================\n\n",
 			router,
 			time.Now().Format("2006-01-02 15:04:05.000"),
 			method,
 			contentType,
-			HttpBuildQuery(header),
+			request.HttpBuildQuery(header),
 			blob,
 			err,
 			zstr.SerializeStr(resp.Header),
@@ -115,54 +114,4 @@ func Do(method, router string, reqBody io.Reader, header map[string]string) (*ht
 		},
 	}
 	return client.Do(req)
-}
-
-// 组建get请求参数,sortAsc true为小到大,false为大到小,nil不排序  a=123&b=321
-func HttpBuildQuery(args map[string]string, sortAsc ...bool) string {
-	str := ""
-	if len(args) == 0 {
-		return str
-	}
-	if len(sortAsc) > 0 {
-		keys := make([]string, 0, len(args))
-		for k := range args {
-			keys = append(keys, k)
-		}
-		if sortAsc[0] {
-			sort.Strings(keys)
-		} else {
-			sort.Sort(sort.Reverse(sort.StringSlice(keys)))
-		}
-		for _, k := range keys {
-			str += "&" + k + "=" + args[k]
-		}
-	} else {
-		for k, v := range args {
-			str += "&" + k + "=" + v
-		}
-	}
-	return str[1:]
-}
-
-func HttpBuild(body interface{}, sortAsc ...bool) string {
-	params := map[string]string{}
-	if args, ok := body.(map[string]interface{}); ok {
-		for k, v := range args {
-			params[k] = cast.ToString(v)
-		}
-		return HttpBuildQuery(params, sortAsc...)
-	}
-	if args, ok := body.(map[string]string); ok {
-		for k, v := range args {
-			params[k] = cast.ToString(v)
-		}
-		return HttpBuildQuery(params, sortAsc...)
-	}
-	if args, ok := body.(map[string]int); ok {
-		for k, v := range args {
-			params[k] = cast.ToString(v)
-		}
-		return HttpBuildQuery(params, sortAsc...)
-	}
-	return cast.ToString(body)
 }

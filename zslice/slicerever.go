@@ -1,11 +1,11 @@
 package zslice
 
 // SliceRever is 切片反转
-func SliceRever(list []interface{}) []interface{} {
-	l := len(list)
-	for i := 0; i < len(list)/2; i++ {
+func SliceRever(items ...any) []any {
+	l := len(items)
+	for i := 0; i < len(items)/2; i++ {
 		// 首尾 交换 len(str)/2 次
-		list[i], list[l-i-1] = list[l-i-1], list[i]
+		items[i], items[l-i-1] = items[l-i-1], items[i]
 	}
-	return list
+	return items
 }

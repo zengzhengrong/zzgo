@@ -28,7 +28,7 @@ func TestGet(t *testing.T) {
 		panic(err)
 	}
 
-	list := zslice.SliceRever(args)
+	list := zslice.SliceRever(args...)
 
 	for _, item := range list {
 		fmt.Println(item)

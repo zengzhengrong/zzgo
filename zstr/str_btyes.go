@@ -3,6 +3,7 @@ package zstr
 import (
 	"encoding/json"
 	"reflect"
+	"unicode/utf8"
 	"unsafe"
 )
 
@@ -38,4 +39,14 @@ func Unserialize(b []byte, dst interface{}) {
 
 func SerializeStr(data interface{}, arg ...interface{}) string {
 	return string(Serialize(data))
+}
+
+// 获取倒数c个字符
+func GetLastRune(s string, c int) string {
+	j := len(s)
+	for i := 0; i < c && j > 0; i++ {
+		_, size := utf8.DecodeLastRuneInString(s[:j])
+		j -= size
+	}
+	return s[j:]
 }
