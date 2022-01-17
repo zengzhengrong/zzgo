@@ -2,21 +2,28 @@ package request
 
 import (
 	"net/http"
+	"os"
 	"time"
+
+	"github.com/zengzhengrong/zzgo/zbool"
 )
 
 const (
 	defaultMultipartMemory             = 32 << 20 // 32 MB
 	defaultContentType                 = "application/json"
-	jsonContectType                    = defaultContentType
-	formContectType                    = "application/x-www-form-urlencoded"
-	defaultDebug                       = false
+	JsonContectType                    = defaultContentType
+	FormContectType                    = "application/x-www-form-urlencoded"
 	defaultTimeout                     = 60 * time.Second
 	defaultTLSConfigInsecureSkipVerify = true
 )
 
-var MaxUploadThreads int = 20
+func setDefaultDebug() bool {
+	debug := os.Getenv("REQUEST_DEBUG")
+	return zbool.BoolFlagMap.Check(debug)
+}
 
+var MaxUploadThreads int = 20
+var DefaultDebug = setDefaultDebug
 var defaultCheckRedirect = func(req *http.Request, via []*http.Request) error {
 	return http.ErrUseLastResponse
 }

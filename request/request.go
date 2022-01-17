@@ -45,6 +45,20 @@ func (r *Request) String() string {
 	return bf.String()
 }
 
+func (r *Request) Clone() *Request {
+	b := WithBody(r.Opts.RawBody)
+	b.apply(r.Opts)
+	req, _ := http.NewRequest(r.Opts.Method, r.Opts.Url, r.Opts.Body)
+	for k, v := range r.Opts.Header {
+		req.Header.Set(k, v)
+	}
+	newRequest := &Request{
+		Opts:    r.Opts,
+		HttpReq: req,
+	}
+	return newRequest
+}
+
 func (c ContentTypeOption) apply(opts *ReqOptions) {
 	opts.ContentType = string(c)
 }
@@ -79,10 +93,12 @@ func WithHeader(h map[string]string) GenericOption[*ReqOptions] {
 func WithBody(body any) GenericOption[*ReqOptions] {
 	var reqBody io.Reader
 	switch v := body.(type) {
+	case io.Reader:
+		reqBody = v
 	case string:
 		reqBody = strings.NewReader(v)
 	case []byte:
-		reqBody = bytes.NewReader(v)
+		reqBody = strings.NewReader(string(v))
 	case map[string]string:
 		val := url.Values{}
 		for k, v := range v {
@@ -112,7 +128,9 @@ func NewReuqest[T GenericOption[*ReqOptions]](method string, url string, opts ..
 	for _, o := range opts {
 		o.apply(&options)
 	}
-
+	if options.ContentType != "" {
+		options.Header["Content-Type"] = options.ContentType
+	}
 	r, err := http.NewRequest(options.Method, options.Url, options.Body)
 	if err != nil {
 		return nil, err
