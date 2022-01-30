@@ -28,6 +28,9 @@ type ReqOptions struct {
 	RawBody     any
 	Query       string
 }
+type ReqOption interface {
+	apply(*ReqOptions)
+}
 
 type ContentTypeOption string
 type HeaderOption map[string]string
@@ -36,28 +39,6 @@ type BodyOption struct {
 	raw any
 }
 type QueryOption string
-
-func (r *Request) String() string {
-	bf := bytes.NewBuffer([]byte{})
-	jsonEncoder := json.NewEncoder(bf)
-	jsonEncoder.SetEscapeHTML(false)
-	jsonEncoder.Encode(r.Opts)
-	return bf.String()
-}
-
-func (r *Request) Clone() *Request {
-	b := WithBody(r.Opts.RawBody)
-	b.apply(r.Opts)
-	req, _ := http.NewRequest(r.Opts.Method, r.Opts.Url, r.Opts.Body)
-	for k, v := range r.Opts.Header {
-		req.Header.Set(k, v)
-	}
-	newRequest := &Request{
-		Opts:    r.Opts,
-		HttpReq: req,
-	}
-	return newRequest
-}
 
 func (c ContentTypeOption) apply(opts *ReqOptions) {
 	opts.ContentType = string(c)
@@ -82,15 +63,15 @@ func (b BodyOption) apply(opts *ReqOptions) {
 }
 
 // WithContentType is set http client content-type
-func WithContentType(c string) GenericOption[*ReqOptions] {
+func WithContentType(c string) ReqOption {
 	return ContentTypeOption(c)
 }
 
-func WithHeader(h map[string]string) GenericOption[*ReqOptions] {
+func WithHeader(h map[string]string) ReqOption {
 	return HeaderOption(h)
 }
 
-func WithBody(body any) GenericOption[*ReqOptions] {
+func WithBody(body any) ReqOption {
 	var reqBody io.Reader
 	switch v := body.(type) {
 	case io.Reader:
@@ -115,18 +96,40 @@ func WithBody(body any) GenericOption[*ReqOptions] {
 	return BodyOption{reqBody, body}
 }
 
-func WithQuery(query map[string]string, sortAsc ...bool) GenericOption[*ReqOptions] {
+func WithQuery(query map[string]string, sortAsc ...bool) ReqOption {
 	return QueryOption(HttpBuildQuery(query, sortAsc...))
 }
 
-func NewReuqest[T GenericOption[*ReqOptions]](method string, url string, opts ...T) (*Request, error) {
-	options := ReqOptions{
+func (r *Request) String() string {
+	bf := bytes.NewBuffer([]byte{})
+	jsonEncoder := json.NewEncoder(bf)
+	jsonEncoder.SetEscapeHTML(false)
+	jsonEncoder.Encode(r.Opts)
+	return bf.String()
+}
+
+func (r *Request) Clone() *Request {
+	b := WithBody(r.Opts.RawBody)
+	b.apply(r.Opts)
+	req, _ := http.NewRequest(r.Opts.Method, r.Opts.Url, r.Opts.Body)
+	for k, v := range r.Opts.Header {
+		req.Header.Set(k, v)
+	}
+	newRequest := &Request{
+		Opts:    r.Opts,
+		HttpReq: req,
+	}
+	return newRequest
+}
+
+func NewReuqest(method string, url string, opts ...ReqOption) (*Request, error) {
+	options := &ReqOptions{
 		Method:      method,
 		Url:         url,
-		ContentType: defaultContentType,
+		ContentType: DefaultContentType,
 	}
 	for _, o := range opts {
-		o.apply(&options)
+		o.apply(options)
 	}
 	if options.ContentType != "" {
 		options.Header["Content-Type"] = options.ContentType
@@ -140,7 +143,7 @@ func NewReuqest[T GenericOption[*ReqOptions]](method string, url string, opts ..
 	}
 
 	return &Request{
-		Opts:    &options,
+		Opts:    options,
 		HttpReq: r,
 	}, nil
 }
@@ -229,7 +232,7 @@ func GetFileOrFiles(req *http.Request) (bool, map[string]*multipart.FileHeader, 
 
 func fromfile(req *http.Request, name string) (*multipart.FileHeader, error) {
 	if req.MultipartForm == nil {
-		if err := req.ParseMultipartForm(defaultMultipartMemory); err != nil {
+		if err := req.ParseMultipartForm(DefaultMultipartMemory); err != nil {
 			return nil, err
 		}
 	}

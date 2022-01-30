@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/spf13/cast"
 	"github.com/zengzhengrong/zzgo/zslice"
 )
 
 func TestSliceSplit(t *testing.T) {
-	var list []int
+	var list []string
 	for i := 0; i < 10003; i++ {
-		list = append(list, i)
+		list = append(list, cast.ToString(i))
 	}
-	callback := func(batch any) {
-		list := batch.([]int)
-		fmt.Println(list)
+	callback := func(batch []string) {
+		fmt.Println(batch)
 	}
 	zslice.SliceSplitWithCallBack(1000, list, callback)
 }
@@ -23,9 +23,8 @@ func BenchmarkSliceSplit(b *testing.B) {
 	for i := 0; i < 10003; i++ {
 		list = append(list, i)
 	}
-	callback := func(batch any) {
-		list := batch.([]int)
-		fmt.Println(list)
+	callback := func(batch []int) {
+		fmt.Println(batch)
 
 	}
 	for n := 0; n < b.N; n++ {
@@ -40,8 +39,7 @@ func BenchmarkSliceSplitChan(b *testing.B) {
 	}
 	for n := 0; n < b.N; n++ {
 		for batch := range zslice.SliceSplitWithChannel(1000, list) {
-			list := batch.([]int)
-			fmt.Println(list)
+			fmt.Println(batch)
 		}
 	}
 }

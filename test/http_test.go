@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,7 +12,11 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/tidwall/gjson"
 	"github.com/zengzhengrong/zzgo/request"
+	"github.com/zengzhengrong/zzgo/request/curl"
+	"github.com/zengzhengrong/zzgo/request/opts/client"
+	"github.com/zengzhengrong/zzgo/request/opts/pipline"
 )
 
 type Result struct {
@@ -113,9 +118,9 @@ func TestClient(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	client := request.NewClient(
-		request.WithDebug(true),
-		request.WithTimeOut(10*time.Second),
+	client := client.NewClient(
+		client.WithDebug(true),
+		client.WithTimeOut(10*time.Second),
 	)
 	resp, err := client.Do(r)
 	if err != nil {
@@ -159,9 +164,9 @@ func TestGET(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	client := request.NewClient(
-		request.WithDebug(true),
-		request.WithTimeOut(10*time.Second),
+	client := client.NewClient(
+		client.WithDebug(true),
+		client.WithTimeOut(10*time.Second),
 	)
 	resp, err := client.Do(r)
 	if err != nil {
@@ -189,9 +194,9 @@ func TestPOST(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	client := request.NewClient(
-		request.WithDebug(true),
-		request.WithTimeOut(10*time.Second),
+	client := client.NewClient(
+		client.WithDebug(true),
+		client.WithTimeOut(10*time.Second),
 	)
 	resp, err := client.Do(r)
 	if err != nil {
@@ -219,9 +224,9 @@ func TestPUT(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	client := request.NewClient(
-		request.WithDebug(true),
-		request.WithTimeOut(10*time.Second),
+	client := client.NewClient(
+		client.WithDebug(true),
+		client.WithTimeOut(10*time.Second),
 	)
 	resp, err := client.Do(r)
 	if err != nil {
@@ -249,9 +254,9 @@ func TestPATCH(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	client := request.NewClient(
-		request.WithDebug(true),
-		request.WithTimeOut(10*time.Second),
+	client := client.NewClient(
+		client.WithDebug(true),
+		client.WithTimeOut(10*time.Second),
 	)
 	resp, err := client.Do(r)
 	if err != nil {
@@ -279,9 +284,9 @@ func TestDELETE(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	client := request.NewClient(
-		request.WithDebug(true),
-		request.WithTimeOut(10*time.Second),
+	client := client.NewClient(
+		client.WithDebug(true),
+		client.WithTimeOut(10*time.Second),
 	)
 	resp, err := client.Do(r)
 	if err != nil {
@@ -296,7 +301,7 @@ func TestDELETE(t *testing.T) {
 }
 
 func TestShortCutGET(t *testing.T) {
-	res := request.GET("https://httpbin.org/get", testquery(), testheader())
+	res := curl.GET("https://httpbin.org/get", testquery(), testheader())
 	fmt.Println(string(res.Body))
 	fmt.Println(res.OK())
 	fmt.Println(res.OKByJsonKey("args", 1))
@@ -307,7 +312,7 @@ func TestShortCutGET(t *testing.T) {
 
 func TestGETBind(t *testing.T) {
 	result := &Result{}
-	err := request.GETBind(result, "https://httpbin.org/get", testquery(), testheader())
+	err := curl.GETBind(result, "https://httpbin.org/get", testquery(), testheader())
 	if err != nil {
 		panic(err)
 	}
@@ -316,21 +321,21 @@ func TestGETBind(t *testing.T) {
 
 func TestShortCutPOST(t *testing.T) {
 
-	res := request.POST("https://httpbin.org/post", testjsonbody(), testquery(), testheader())
+	res := curl.POST("https://httpbin.org/post", testjsonbody(), testquery(), testheader())
 	fmt.Println(res.OK())
 	fmt.Println(res.GetBodyString())
 }
 
 func TestShortCutPOSTForm(t *testing.T) {
 
-	res := request.POSTForm("https://httpbin.org/post", testformbody(), testquery(), testheader())
+	res := curl.POSTForm("https://httpbin.org/post", testformbody(), testquery(), testheader())
 	fmt.Println(res.OK())
 	fmt.Println(res.GetBodyString())
 }
 
 func TestShortCutPOSTBind(t *testing.T) {
 	result := &Result{}
-	err := request.POSTBind(result, "https://httpbin.org/post", testjsonbody(), testquery(), testheader())
+	err := curl.POSTBind(result, "https://httpbin.org/post", testjsonbody(), testquery(), testheader())
 	if err != nil {
 		panic(err)
 	}
@@ -339,9 +344,48 @@ func TestShortCutPOSTBind(t *testing.T) {
 
 func TestShortCutPOSTFormBind(t *testing.T) {
 	result := &Result{}
-	err := request.POSTFormBind(result, "https://httpbin.org/post", testformbody(), testquery(), testheader())
+	err := curl.POSTFormBind(result, "https://httpbin.org/post", testformbody(), testquery(), testheader())
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println(result)
+}
+
+func TestNewPipLine(t *testing.T) {
+	c := client.NewClient(client.WithDefault())
+	p := pipline.NewPipLine(
+		pipline.WithParall(true),
+		pipline.WithClient(c),
+		pipline.WithIn(func(ctx context.Context, cli *client.Client) ([]byte, error) {
+			resp := curl.ClientGET(cli, "https://httpbin.org/get", testquery(), testheader())
+			if resp.GetError() != nil {
+				return nil, resp.GetError()
+			}
+			return resp.Body, nil
+		}, func(ctx context.Context, cli *client.Client) ([]byte, error) {
+			resp := curl.ClientPOST(cli, "https://httpbin.org/post", testjsonbody(), testquery(), testheader())
+			if resp.GetError() != nil {
+				return nil, resp.GetError()
+			}
+			return resp.Body, nil
+		}),
+		pipline.WithOut(func(ctx context.Context, cli *client.Client, Ins ...[]byte) request.Response {
+			r1 := gjson.GetBytes(Ins[0], "args.a").String()
+			r2 := gjson.GetBytes(Ins[1], "json").Value()
+			body := struct {
+				R1 string
+				R2 any
+			}{
+				R1: r1,
+				R2: r2,
+			}
+			b, _ := json.Marshal(body)
+			resp := curl.ClientPOST(cli, "https://httpbin.org/post", b, testquery(), testheader())
+			return resp
+		}),
+	)
+	resp := p.Result()
+	fmt.Println(string(resp.Body))
+	fmt.Println(resp.OK())
+	fmt.Println(resp.GetError())
 }

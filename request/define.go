@@ -9,29 +9,22 @@ import (
 )
 
 const (
-	defaultMultipartMemory             = 32 << 20 // 32 MB
-	defaultContentType                 = "application/json"
-	JsonContectType                    = defaultContentType
+	DefaultMultipartMemory             = 32 << 20 // 32 MB
+	DefaultContentType                 = "application/json"
+	JsonContectType                    = DefaultContentType
 	FormContectType                    = "application/x-www-form-urlencoded"
-	defaultTimeout                     = 60 * time.Second
-	defaultTLSConfigInsecureSkipVerify = true
+	DefaultTimeout                     = 60 * time.Second
+	DefaultTLSConfigInsecureSkipVerify = true
+	PiplineCtxValueKey                 = "values"
 )
 
-func setDefaultDebug() bool {
+func SetDefaultDebug() bool {
 	debug := os.Getenv("REQUEST_DEBUG")
 	return zbool.BoolFlagMap.Check(debug)
 }
 
 var MaxUploadThreads int = 20
-var DefaultDebug = setDefaultDebug
-var defaultCheckRedirect = func(req *http.Request, via []*http.Request) error {
+var DefaultDebug = SetDefaultDebug
+var DefaultCheckRedirect = func(req *http.Request, via []*http.Request) error {
 	return http.ErrUseLastResponse
-}
-
-type Options interface {
-	*ClientOptions | *ReqOptions
-}
-
-type GenericOption[T Options] interface {
-	apply(T)
 }
