@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
 	"github.com/tidwall/gjson"
 	"github.com/zengzhengrong/zzgo/request"
@@ -354,7 +355,7 @@ func TestShortCutPOSTFormBind(t *testing.T) {
 func TestNewPipLine(t *testing.T) {
 	c := client.NewClient(client.WithDefault())
 	p := pipline.NewPipLine(
-		pipline.WithParall(true),
+		pipline.WithParall(false),
 		pipline.WithClient(c),
 		pipline.WithIn(func(ctx context.Context, cli *client.Client) ([]byte, error) {
 			resp := curl.ClientGET(cli, "https://httpbin.org/get", testquery(), testheader())
@@ -388,4 +389,9 @@ func TestNewPipLine(t *testing.T) {
 	fmt.Println(string(resp.Body))
 	fmt.Println(resp.OK())
 	fmt.Println(resp.GetError())
+	v := &Result{}
+	if err := resp.GetStruct(v); err != nil {
+		panic(err)
+	}
+	spew.Dump(v)
 }
